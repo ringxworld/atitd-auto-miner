@@ -91,14 +91,14 @@ def run(*args, **kwargs):
                 weights = np.full((mask.shape[0], mask.shape[1]), 255)[idx].ravel().astype(float)
 
                 db = DBSCAN(eps=kwargs.get('eps'),
-                            min_samples=kwargs.get('min_samples'),
+                            min_samples=int(kwargs.get('min_samples')),
                             metric='euclidean',
                             algorithm='auto')
                 labels = db.fit_predict(points, sample_weight=weights)
 
                 n_clusters = int(np.max(labels)) + 1
                 print(n_clusters)
-                if n_clusters == kwargs.get('clusters'):
+                if n_clusters == int(kwargs.get('clusters')):
                     cluster_points = []
                     for l in range(n_clusters):
                         idx = (labels == l)
@@ -143,16 +143,16 @@ def run(*args, **kwargs):
                     run_bot(cluster_points, **kwargs)
 
             count += 1
-            if count > 40:
+            if count > 150:
                 template_match_click('./work_this_mine.png', {"top": 0, "left": 0, "width": 500, "height": 400})
                 time.sleep(4)
                 template_match_click('./ok.png', monitor, checkUntilGone=True)
                 time.sleep(15)
 
-            # Display the picture
+            # Display the pictuare
             if kwargs.get('debug'):
-                cv2.imshow("OpenCV Foreground detection", img)
                 print("fps: {}".format(1 / (time.time() - last_time)))
+                cv2.imshow("OpenCV Foreground detection", mask)
 
             # Press "q" to quit
             if cv2.waitKey(25) & 0xFF == ord("q"):
