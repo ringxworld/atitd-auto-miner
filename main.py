@@ -13,7 +13,7 @@ from itertools import combinations
 monitor = {"top": 200, "left": 500, "width": 950, "height": 740}
 
 
-def run_bot(cluster_points):
+def run_bot(cluster_points, *args, **kwargs):
     print(cluster_points)
 
     _combinations = list(combinations(cluster_points, 3))
@@ -23,7 +23,7 @@ def run_bot(cluster_points):
         clickThreeOres(points)
 
     template_match_click('./stop_working_this_mine.png', {"top": 0, "left": 0, "width": 500, "height": 400})
-    run()
+    run(**kwargs)
 
 
 def clickThreeOres(points):
@@ -140,7 +140,7 @@ def run(*args, **kwargs):
 
                     running = False
                     count = 0
-                    run_bot(cluster_points)
+                    run_bot(cluster_points, **kwargs)
 
             count += 1
             if count > 40:
