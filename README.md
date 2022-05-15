@@ -4,8 +4,6 @@ Fully automatic but very brittle. Enjoy!
  
 ### Installation:
 
-#### Supported for ubuntu only
-
 Miniconda/Anaconda setup
 ```
 curl -o https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh
