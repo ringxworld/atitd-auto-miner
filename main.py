@@ -63,18 +63,23 @@ def template_match_click(template_path, bounds, checkUntilGone=False):
 
 
 def run(*args, **kwargs):
-
     with mss.mss() as sct:
         count = 0
         fgbg = cv2.createBackgroundSubtractorMOG2()
 
         running = True
 
+        monitor = kwargs.get('monitor_bounds')
+
+        template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+                             {"top": 0, "left": 0, "width": 500, "height": 400})
+
         while running:
+
             last_time = time.time()
 
             # Get raw pixels from the screen, save it to a Numpy array
-            img = np.array(sct.grab(kwargs.get('monitor_bounds')))
+            img = np.array(sct.grab(monitor))
 
             mask = fgbg.apply(img)
             color = ('b', 'g', 'r')
@@ -83,13 +88,13 @@ def run(*args, **kwargs):
 
             foreground_count = cv2.countNonZero(mask)
             if 300000 > foreground_count > 10000:
-                if kwargs.get('debug'):
-                    cv2.imwrite(f"{count}_foreground.png", cv2.cvtColor(tmp, cv2.COLOR_BGR2LAB))
-                    cv2.imwrite(f"{count}_mask.png", mask)
+                downsample = mask.copy()
+                for l in range(int(kwargs.get('downsample'))):
+                    downsample = cv2.pyrDown(downsample)
 
-                idx = (mask > 0)
+                idx = (downsample > 0)
                 points = np.column_stack(np.nonzero(idx))
-                weights = np.full((mask.shape[0], mask.shape[1]), 255)[idx].ravel().astype(float)
+                weights = np.full((downsample.shape[0], downsample.shape[1]), 255)[idx].ravel().astype(float)
 
                 db = DBSCAN(eps=int(kwargs.get('eps')),
                             min_samples=int(kwargs.get('min_samples')),
@@ -106,6 +111,9 @@ def run(*args, **kwargs):
                         current = points[idx]
 
                         center = aabb.centre_point(aabb.create_from_points(current))
+                        center[0] = center[0] * (2 ** int(kwargs.get('downsample')))
+                        center[1] = center[1] * (2 ** int(kwargs.get('downsample')))
+
                         cluster_points.append(center)
 
                         if kwargs.get('debug'):
@@ -136,26 +144,23 @@ def run(*args, **kwargs):
                                           pt2=(out[1, 1], out[1, 0]),
                                           color=(255, 0, 0),
                                           thickness=2)
-                    if kwargs.get('debug'):
-                        cv2.imwrite(f"{count}_clusters.jpg", tmp)
-
-                    running = False
                     count = 0
+                    running = False
                     run_bot(cluster_points, **kwargs)
 
             count += 1
-            if count > 150:
+            if count > 60:
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'work_this_mine.png'),
                                      {"top": 0, "left": 0, "width": 500, "height": 400})
-                time.sleep(4)
+                time.sleep(2.5)
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
                                      kwargs.get('monitor_bounds'), checkUntilGone=True)
-                time.sleep(15)
+                count = 0
 
             # Display the pictuare
             if kwargs.get('debug'):
                 print("fps: {}".format(1 / (time.time() - last_time)))
-                cv2.imshow("OpenCV Foreground detection", mask)
+                cv2.imshow("OpenCV Foreground detection", tmp)
 
             # Press "q" to quit
             if cv2.waitKey(25) & 0xFF == ord("q"):
@@ -164,10 +169,10 @@ def run(*args, **kwargs):
 
 
 def update_global_clip_bounds(bounds_params, default_bounds):
-        keys = list(default_bounds.keys())
-        for idx in range(len(bounds_params)):
-            default_bounds[keys[idx]] = int(bounds_params[idx])
-        return default_bounds
+    keys = list(default_bounds.keys())
+    for idx in range(len(bounds_params)):
+        default_bounds[keys[idx]] = int(bounds_params[idx])
+    return default_bounds
 
 
 if __name__ == "__main__":
@@ -180,6 +185,12 @@ if __name__ == "__main__":
                         help='number of ore nodes expected to be found from dbscan',
                         default=8
                         )
+
+    parser.add_argument('--downsample',
+                        dest='downsample',
+                        help='https://docs.opencv.org/3.4/d4/d1f/tutorial_pyramids.html.'
+                             'Scaled by 2^n. Where --downsample of 3 is 1/8th the size of original',
+                        default=3)
 
     parser.add_argument('--eps',
                         dest='eps',
