@@ -1,14 +1,15 @@
-import time
-from sklearn.cluster import DBSCAN
 import cv2
+from itertools import combinations
+import matplotlib.pyplot as plt
 import mss
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy import ndimage as ndi
-from pyrr import aabb
+import os
 import pyautogui
+from pyrr import aabb
+from scipy import ndimage as ndi
+from sklearn.cluster import DBSCAN
 import time
-from itertools import combinations
+
 
 monitor = {"top": 200, "left": 500, "width": 950, "height": 740}
 
@@ -22,7 +23,8 @@ def run_bot(cluster_points, *args, **kwargs):
         print(f"Current iteration:{idx} out of: {len(_combinations)}")
         clickThreeOres(points)
 
-    template_match_click('./stop_working_this_mine.png', {"top": 0, "left": 0, "width": 500, "height": 400})
+    template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+                         {"top": 0, "left": 0, "width": 500, "height": 400})
     run(**kwargs)
 
 
@@ -36,7 +38,8 @@ def clickThreeOres(points):
         pyautogui.press(values[0])
         time.sleep(values[1])
 
-    template_match_click('./ok.png', monitor, checkUntilGone=True)
+    template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
+                         monitor, checkUntilGone=True)
 
 
 def template_match_click(template_path, bounds, checkUntilGone=False):
@@ -63,6 +66,7 @@ def template_match_click(template_path, bounds, checkUntilGone=False):
 
 
 def run(*args, **kwargs):
+
     with mss.mss() as sct:
         count = 0
         fgbg = cv2.createBackgroundSubtractorMOG2()
@@ -90,7 +94,7 @@ def run(*args, **kwargs):
                 points = np.column_stack(np.nonzero(idx))
                 weights = np.full((mask.shape[0], mask.shape[1]), 255)[idx].ravel().astype(float)
 
-                db = DBSCAN(eps=kwargs.get('eps'),
+                db = DBSCAN(eps=int(kwargs.get('eps')),
                             min_samples=int(kwargs.get('min_samples')),
                             metric='euclidean',
                             algorithm='auto')
@@ -144,9 +148,11 @@ def run(*args, **kwargs):
 
             count += 1
             if count > 150:
-                template_match_click('./work_this_mine.png', {"top": 0, "left": 0, "width": 500, "height": 400})
+                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'images/work_this_mine.png'),
+                                     {"top": 0, "left": 0, "width": 500, "height": 400})
                 time.sleep(4)
-                template_match_click('./ok.png', monitor, checkUntilGone=True)
+                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'images/ok.png'),
+                                     monitor, checkUntilGone=True)
                 time.sleep(15)
 
             # Display the pictuare
