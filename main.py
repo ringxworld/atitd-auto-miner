@@ -165,8 +165,8 @@ def run(*args, **kwargs):
 
 def update_global_clip_bounds(bounds_params, default_bounds):
         keys = list(default_bounds.keys())
-        for idx in range(len(params)):
-            default_bounds[keys[idx]] = int(params[idx])
+        for idx in range(len(bounds_params)):
+            default_bounds[keys[idx]] = int(bounds_params[idx])
         return default_bounds
 
 
@@ -200,7 +200,7 @@ if __name__ == "__main__":
                         help='include --debug flag to have debug output')
 
     parser.add_argument('--bounds', nargs='+',
-                        help='Usage:              --bounds -i 25, 50, 75, 100. '
+                        help='Usage:              --bounds  25, 50, 75, 100. '
                              'Updates: top, left, right, bottom in that order. '
                              'Missing params will result in default values. '
                              'Put nothing to keep the values at [200,500,950, 740]')
@@ -213,7 +213,5 @@ if __name__ == "__main__":
     if args.get('bounds') is not None:
         params = args['bounds']
         args['monitor_bounds'] = update_global_clip_bounds(params, default_bounds)
-
-    print(args)
 
     run(**args)
