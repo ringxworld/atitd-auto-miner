@@ -11,9 +11,6 @@ from sklearn.cluster import DBSCAN
 import time
 
 
-monitor = {"top": 200, "left": 500, "width": 950, "height": 740}
-
-
 def run_bot(cluster_points, *args, **kwargs):
     print(cluster_points)
 
@@ -21,16 +18,16 @@ def run_bot(cluster_points, *args, **kwargs):
 
     for idx, points in enumerate(_combinations):
         print(f"Current iteration:{idx} out of: {len(_combinations)}")
-        clickThreeOres(points)
+        clickThreeOres(points, kwargs.get('monitor_bounds'))
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
                          {"top": 0, "left": 0, "width": 500, "height": 400})
     run(**kwargs)
 
 
-def clickThreeOres(points):
+def clickThreeOres(points, monitor_bounds):
     for idx, item in enumerate(points):
-        point = [monitor['left'] + item[1], monitor['top'] + item[0]]
+        point = [monitor_bounds['left'] + item[1], monitor_bounds['top'] + item[0]]
         print(f"Moving to:{point[0]},{point[1]}")
         pyautogui.moveTo(point[0], point[1])
         values = ('s', 1.5) if idx == 2 else ('a', 0.5)
@@ -39,7 +36,7 @@ def clickThreeOres(points):
         time.sleep(values[1])
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                         monitor, checkUntilGone=True)
+                         monitor_bounds, checkUntilGone=True)
 
 
 def template_match_click(template_path, bounds, checkUntilGone=False):
@@ -77,7 +74,7 @@ def run(*args, **kwargs):
             last_time = time.time()
 
             # Get raw pixels from the screen, save it to a Numpy array
-            img = np.array(sct.grab(monitor))
+            img = np.array(sct.grab(kwargs.get('monitor_bounds')))
 
             mask = fgbg.apply(img)
             color = ('b', 'g', 'r')
@@ -152,7 +149,7 @@ def run(*args, **kwargs):
                                      {"top": 0, "left": 0, "width": 500, "height": 400})
                 time.sleep(4)
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                                     monitor, checkUntilGone=True)
+                                     kwargs.get('monitor_bounds'), checkUntilGone=True)
                 time.sleep(15)
 
             # Display the pictuare
@@ -164,6 +161,13 @@ def run(*args, **kwargs):
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
+
+
+def update_global_clip_bounds(bounds_params, default_bounds):
+        keys = list(default_bounds.keys())
+        for idx in range(len(params)):
+            default_bounds[keys[idx]] = int(params[idx])
+        return default_bounds
 
 
 if __name__ == "__main__":
@@ -195,6 +199,21 @@ if __name__ == "__main__":
                         action='store_true',
                         help='include --debug flag to have debug output')
 
+    parser.add_argument('--bounds', nargs='+',
+                        help='Usage:              --bounds -i 25, 50, 75, 100. '
+                             'Updates: top, left, right, bottom in that order. '
+                             'Missing params will result in default values. '
+                             'Put nothing to keep the values at [200,500,950, 740]')
+
     args = vars(parser.parse_args())
+
+    default_bounds = {"top": 200, "left": 500, "width": 950, "height": 740}
+
+    args['monitor_bounds'] = default_bounds
+    if args.get('bounds') is not None:
+        params = args['bounds']
+        args['monitor_bounds'] = update_global_clip_bounds(params, default_bounds)
+
+    print(args)
 
     run(**args)
