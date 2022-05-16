@@ -148,10 +148,10 @@ def run(*args, **kwargs):
 
             count += 1
             if count > 150:
-                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'images/work_this_mine.png'),
+                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'work_this_mine.png'),
                                      {"top": 0, "left": 0, "width": 500, "height": 400})
                 time.sleep(4)
-                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'images/ok.png'),
+                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
                                      monitor, checkUntilGone=True)
                 time.sleep(15)
 
