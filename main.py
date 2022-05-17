@@ -234,7 +234,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--min_samples',
                         dest='min_samples',
-                        help='DBScan parameter see'
+                        help='DBScan parameter see '
                              'https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html',
                         default=5000)
 
