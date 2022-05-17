@@ -17,11 +17,12 @@ def run_bot(cluster_points, *args, **kwargs):
     _combinations = list(combinations(cluster_points, 3))
 
     for idx, points in enumerate(_combinations):
-        print(f"Current iteration:{idx} out of: {len(_combinations)}")
+        print(f"Current iteration:{idx + 1} out of: {len(_combinations)}")
         clickThreeOres(points, kwargs.get('monitor_bounds'))
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
                          {"top": 0, "left": 0, "width": 500, "height": 400})
+    time.sleep(2.5)
     run(**kwargs)
 
 
@@ -30,17 +31,21 @@ def clickThreeOres(points, monitor_bounds):
         point = [monitor_bounds['left'] + item[1], monitor_bounds['top'] + item[0]]
         print(f"Moving to:{point[0]},{point[1]}")
         pyautogui.moveTo(point[0], point[1])
-        values = ('s', 1.5) if idx == 2 else ('a', 0.5)
+        values = ('s', 0.01) if idx == 2 else ('a', 0.76)
         print(f"keypressed:{values[0]},timeWait:{values[1]}")
         pyautogui.press(values[0])
         time.sleep(values[1])
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                         monitor_bounds, checkUntilGone=True)
+                         monitor_bounds,
+                         sleepUntilTrue=True,
+                         checkUntilGone=True)
 
 
-def template_match_click(template_path, bounds, checkUntilGone=False):
+def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntilGone=False):
+    clicked = False
     with mss.mss() as sct:
+        retry_attempts = 35
         tmp_img = np.array(sct.grab(bounds))
 
         ok = cv2.imread(template_path, cv2.IMREAD_UNCHANGED)
@@ -48,11 +53,23 @@ def template_match_click(template_path, bounds, checkUntilGone=False):
         result = cv2.matchTemplate(tmp_img, ok, cv2.TM_CCOEFF_NORMED)
         mn, mx, mnLoc, mxLoc = cv2.minMaxLoc(result)
         threshold = .8
+
+        if sleepUntilTrue:
+            for i in range(retry_attempts):
+                tmp_img = np.array(sct.grab(bounds))
+                result = cv2.matchTemplate(tmp_img, ok, cv2.TM_CCOEFF_NORMED)
+                mn, _mx, mnLoc, mxLoc = cv2.minMaxLoc(result)
+                mx = _mx
+                if mx > threshold:
+                    break
+                time.sleep(0.01)
+
         while mx > threshold:
             MPx, MPy = mxLoc
             trows, tcols = ok.shape[:2]
             pyautogui.moveTo(bounds['left'] + ((MPx + MPx + tcols) / 2), bounds['top'] + ((MPy + MPy + trows) / 2))
             pyautogui.click()
+            clicked = True
             mx = -1 if not checkUntilGone else mx
             if checkUntilGone:
                 tmp_img = np.array(sct.grab(bounds))
@@ -60,6 +77,7 @@ def template_match_click(template_path, bounds, checkUntilGone=False):
                 mn, _mx, mnLoc, mxLoc = cv2.minMaxLoc(result)
                 mx = _mx
                 time.sleep(1)
+    return clicked
 
 
 def run(*args, **kwargs):
@@ -73,6 +91,8 @@ def run(*args, **kwargs):
 
         template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
                              {"top": 0, "left": 0, "width": 500, "height": 400})
+
+        time.sleep(2.5)
 
         cluster_points = []
         previous_cluster_count = -1
@@ -90,7 +110,7 @@ def run(*args, **kwargs):
             tmp = cv2.bitwise_and(img, img, mask=mask)
 
             foreground_count = cv2.countNonZero(mask)
-            if 300000 > foreground_count > 10000:
+            if 300000 > foreground_count > 10000 and count >= int(kwargs.get('frames')):
                 print("Checking for clusters")
                 downsample = mask.copy()
                 for l in range(int(kwargs.get('downsample'))):
@@ -100,7 +120,7 @@ def run(*args, **kwargs):
                 points = np.column_stack(np.nonzero(idx))
                 weights = np.full((downsample.shape[0], downsample.shape[1]), 255)[idx].ravel().astype(float)
 
-                db = DBSCAN(eps=int(kwargs.get('eps')),
+                db = DBSCAN(eps=float(kwargs.get('eps')),
                             min_samples=int(kwargs.get('min_samples')),
                             metric='euclidean',
                             algorithm='auto')
@@ -166,9 +186,12 @@ def run(*args, **kwargs):
             if count > int(kwargs.get('frames')):
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'work_this_mine.png'),
                                      {"top": 0, "left": 0, "width": 500, "height": 400})
-                template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                                     kwargs.get('monitor_bounds'), checkUntilGone=True)
-                count = -int(kwargs.get('frames'))  # double the normal loading time
+                clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
+                                               kwargs.get('monitor_bounds'),
+                                               sleepUntilTrue=True,
+                                               checkUntilGone=True)
+                if clicked:
+                    count = -int(kwargs.get('frames'))  # double the normal loading time
 
             # Display the pictuare
             if kwargs.get('debug'):
