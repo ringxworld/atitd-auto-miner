@@ -9,8 +9,7 @@ Miniconda/Anaconda setup
 Installing on windows:
 https://docs.conda.io/en/latest/miniconda.html
 ```commandline
-conda init
-conda create env --name ATITDScripts
+conda create -n ATITDScripts
 conda activate ATITDScripts
 conda install pip
 cd /path/to/repo/root/

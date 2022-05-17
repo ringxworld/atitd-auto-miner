@@ -1,24 +1,51 @@
-import cv2
+import os
+import re
+import time
 from itertools import combinations
-import matplotlib.pyplot as plt
+import uuid
+
+import cv2
 import mss
 import numpy as np
-import os
 import pyautogui
+import pytesseract
 from pyrr import aabb
-from scipy import ndimage as ndi
 from sklearn.cluster import DBSCAN
-import time
+
+total = 0
 
 
 def run_bot(cluster_points, *args, **kwargs):
     print(cluster_points)
+    cluster_points = [tuple(x) for x in cluster_points]
 
     _combinations = list(combinations(cluster_points, 3))
 
+    successful_combinations = []
+
     for idx, points in enumerate(_combinations):
         print(f"Current iteration:{idx + 1} out of: {len(_combinations)}")
-        clickThreeOres(points, kwargs.get('monitor_bounds'))
+        if kwargs.get('run_ocr'):
+            print(f"Total Ore collected: {total}")
+        successful = clickOres(points, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
+        if successful:
+            successful_combinations.append(points)
+
+    first_pass_count = len(_combinations)
+    should_run_four = kwargs.get('four_combinations')
+    if successful_combinations and should_run_four:
+        four_combinations = list(combinations(cluster_points, 4))
+        _combinations = list(set([item for sublist in
+                                  [[item for item in four_combinations if set(i) == set(i).intersection(set(item))] for
+                                   i in
+                                   successful_combinations] for item in sublist]))
+        print(f"Running an additional {len(_combinations)} to try 4 node harvests from successful ore harvests")
+        for idx, points in enumerate(_combinations):
+            print(f"Current iteration:{first_pass_count + idx + 1} out of: {len(_combinations) + first_pass_count}")
+            if kwargs.get('run_ocr'):
+                print(f"Total Ore collected: {total}")
+            clickOres(points, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
+        pass
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
                          {"top": 0, "left": 0, "width": 500, "height": 400})
@@ -26,20 +53,55 @@ def run_bot(cluster_points, *args, **kwargs):
     run(**kwargs)
 
 
-def clickThreeOres(points, monitor_bounds):
+def clickOres(points, monitor_bounds, run_ocr=False):
     for idx, item in enumerate(points):
         point = [monitor_bounds['left'] + item[1], monitor_bounds['top'] + item[0]]
-        print(f"Moving to:{point[0]},{point[1]}")
+        # print(f"Moving to:{point[0]},{point[1]}")
         pyautogui.moveTo(point[0], point[1])
-        values = ('s', 0.01) if idx == 2 else ('a', 0.76)
-        print(f"keypressed:{values[0]},timeWait:{values[1]}")
+        values = ('s', 0.01) if idx == len(points) - 1 else ('a', 0.76)
+        # print(f"keypressed:{values[0]},timeWait:{values[1]}")
         pyautogui.press(values[0])
         time.sleep(values[1])
 
-    template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                         monitor_bounds,
-                         sleepUntilTrue=True,
-                         checkUntilGone=True)
+    clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
+                                   monitor_bounds,
+                                   sleepUntilTrue=True,
+                                   checkUntilGone=True)
+    if not run_ocr:
+        return False
+    if clicked:
+        return False
+    if not ocr_extract_text():
+        return False
+
+    return True
+
+
+def extract_match(pattern, search_string):
+    p = re.compile(pattern)
+    text = p.findall(search_string)
+    count = None
+
+    if text:
+        count = [int(s) for s in text[0].split() if s.isdigit()]
+
+    if not count:
+        return False
+
+    if count:
+        global total
+        total += count[0]
+
+    return True
+
+
+def ocr_extract_text():
+    with mss.mss() as sct:
+        img = np.array(sct.grab({"top": 989, "left": 1500, "width": 400, "height": 17}))
+        count = extract_match("workload had:(.*)", pytesseract.image_to_string(img))
+        if count:
+            return True
+    return False
 
 
 def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntilGone=False):
@@ -95,6 +157,7 @@ def run(*args, **kwargs):
         time.sleep(2.5)
 
         cluster_points = []
+        previous_cluster_coordinates = []
         previous_cluster_count = -1
 
         while running:
@@ -118,7 +181,8 @@ def run(*args, **kwargs):
 
                 idx = (downsample > 0)
                 points = np.column_stack(np.nonzero(idx))
-                weights = np.full((downsample.shape[0], downsample.shape[1]), 255)[idx].ravel().astype(float)
+                # weights = np.full((downsample.shape[0], downsample.shape[1]), 255)[idx].ravel().astype(float)
+                weights = downsample[idx].ravel().astype(float)
 
                 db = DBSCAN(eps=float(kwargs.get('eps')),
                             min_samples=int(kwargs.get('min_samples')),
@@ -131,7 +195,14 @@ def run(*args, **kwargs):
                 previous_cluster_count = n_clusters
                 if n_clusters != int(kwargs.get('clusters')):
                     count = 0
-
+                    previous_cluster_coordinates = []
+                    if kwargs.get('debug'):
+                        for l in range(n_clusters):
+                            idx = (labels == l)
+                            current = points[idx]
+                            out = aabb.create_from_points(current)
+                            previous_cluster_coordinates.append(out)
+                        cv2.imwrite(f'{uuid.uuid4()}_downsampled.png', downsample)
                 if n_clusters == int(kwargs.get('clusters')):
 
                     for l in range(n_clusters):
@@ -191,7 +262,7 @@ def run(*args, **kwargs):
                                                sleepUntilTrue=True,
                                                checkUntilGone=True)
                 if clicked:
-                    count = -int(kwargs.get('frames'))  # double the normal loading time
+                    count = - int(kwargs.get('frames'))  # double the normal loading time
 
             # Display the pictuare
             if kwargs.get('debug'):
@@ -210,6 +281,26 @@ def run(*args, **kwargs):
                                 fontScale=1.2,
                                 color=(255, 0, 0),
                                 thickness=2)
+                    print(len(previous_cluster_coordinates))
+                    for l in range(len(previous_cluster_coordinates)):
+                        UPSCALE_OFFSET = (2 ** int(kwargs.get('downsample')))
+                        out = previous_cluster_coordinates[l]
+                        cv2.putText(img=tmp,
+                                    text=f"Cluster:{l}",
+                                    org=(out[0, 1] * UPSCALE_OFFSET,
+                                         out[0, 0] * UPSCALE_OFFSET - 10),
+                                    fontFace=cv2.FONT_HERSHEY_PLAIN,
+                                    fontScale=0.9,
+                                    color=(255, 0, 0),
+                                    thickness=2)
+
+                        cv2.rectangle(img=tmp,
+                                      pt1=(out[0, 1] * UPSCALE_OFFSET,
+                                           out[0, 0] * UPSCALE_OFFSET),
+                                      pt2=(out[1, 1] * UPSCALE_OFFSET,
+                                           out[1, 0] * UPSCALE_OFFSET),
+                                      color=(255, 0, 0),
+                                      thickness=2)
                 cv2.imshow("OpenCV Foreground detection", tmp)
 
             # Press "q" to quit
@@ -266,6 +357,18 @@ if __name__ == "__main__":
                         action='store_true',
                         help='include --debug flag to have debug output')
 
+    parser.add_argument('--run_ocr',
+                        dest='run_ocr',
+                        action='store_true',
+                        help="Also include --four_combinations to do 4 stone breaks on successful harvests"
+                             "In order to run OCR you need Tesseract installed. For instructions on how to do"
+                             "do this on windows check here: https://github.com/UB-Mannheim/tesseract/wiki")
+
+    parser.add_argument('--four_combinations',
+                        dest='four_combinations',
+                        action='store_true',
+                        help="Use with --run_ocr to run 4 harvests on successful harvests")
+
     parser.add_argument('--bounds', nargs='+',
                         help='Usage:              --bounds  25, 50, 75, 100. '
                              'Updates: top, left, right, bottom in that order. '
@@ -280,5 +383,8 @@ if __name__ == "__main__":
     if args.get('bounds') is not None:
         params = args['bounds']
         args['monitor_bounds'] = update_global_clip_bounds(params, default_bounds)
+
+    if args['run_ocr']:
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
     run(**args)

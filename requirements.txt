@@ -3,5 +3,6 @@ mss==6.1.0
 opencv-python==4.5.5.64
 PyAutoGUI==0.9.53
 pyrr==0.10.3
+pytesseract==0.3.9
 scikit-learn==1.1.0
 scipy==1.8.0
