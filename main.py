@@ -74,6 +74,9 @@ def run(*args, **kwargs):
         template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
                              {"top": 0, "left": 0, "width": 500, "height": 400})
 
+        cluster_points = []
+        previous_cluster_count = -1
+
         while running:
 
             last_time = time.time()
@@ -88,6 +91,7 @@ def run(*args, **kwargs):
 
             foreground_count = cv2.countNonZero(mask)
             if 300000 > foreground_count > 10000:
+                print("Checking for clusters")
                 downsample = mask.copy()
                 for l in range(int(kwargs.get('downsample'))):
                     downsample = cv2.pyrDown(downsample)
@@ -104,8 +108,12 @@ def run(*args, **kwargs):
 
                 n_clusters = int(np.max(labels)) + 1
                 print(n_clusters)
+                previous_cluster_count = n_clusters
+                if n_clusters != int(kwargs.get('clusters')):
+                    count = 0
+
                 if n_clusters == int(kwargs.get('clusters')):
-                    cluster_points = []
+
                     for l in range(n_clusters):
                         idx = (labels == l)
                         current = points[idx]
@@ -118,54 +126,74 @@ def run(*args, **kwargs):
 
                         if kwargs.get('debug'):
                             out = aabb.create_from_points(current)
+                            UPSCALE_OFFSET = (2 ** int(kwargs.get('downsample')))
                             cv2.putText(img=tmp,
                                         text=f"Cluster:{l}",
-                                        org=(out[0, 1], out[0, 0] - 10),
+                                        org=(out[0, 1] * UPSCALE_OFFSET,
+                                             out[0, 0] * UPSCALE_OFFSET - 10),
                                         fontFace=cv2.FONT_HERSHEY_PLAIN,
                                         fontScale=0.9,
                                         color=(255, 0, 0),
                                         thickness=2)
 
                             cv2.rectangle(img=tmp,
-                                          pt1=(out[0, 1], out[0, 0]),
-                                          pt2=(out[1, 1], out[1, 0]),
+                                          pt1=(out[0, 1] * UPSCALE_OFFSET,
+                                               out[0, 0] * UPSCALE_OFFSET),
+                                          pt2=(out[1, 1] * UPSCALE_OFFSET,
+                                               out[1, 0] * UPSCALE_OFFSET),
                                           color=(255, 0, 0),
                                           thickness=2)
                             cv2.putText(img=img,
                                         text=f"Cluster:{l}",
-                                        org=(out[0, 1], out[0, 0] - 10),
+                                        org=(out[0, 1] * UPSCALE_OFFSET,
+                                             out[0, 0] * UPSCALE_OFFSET - 10),
                                         fontFace=cv2.FONT_HERSHEY_PLAIN,
                                         fontScale=0.9,
                                         color=(255, 0, 0),
                                         thickness=2)
 
                             cv2.rectangle(img=img,
-                                          pt1=(out[0, 1], out[0, 0]),
-                                          pt2=(out[1, 1], out[1, 0]),
+                                          pt1=(out[0, 1] * UPSCALE_OFFSET,
+                                               out[0, 0] * UPSCALE_OFFSET),
+                                          pt2=(out[1, 1] * UPSCALE_OFFSET,
+                                               out[1, 0] * UPSCALE_OFFSET),
                                           color=(255, 0, 0),
                                           thickness=2)
                     count = 0
                     running = False
-                    run_bot(cluster_points, **kwargs)
 
             count += 1
-            if count > 60:
+            if count > int(kwargs.get('frames')):
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'work_this_mine.png'),
                                      {"top": 0, "left": 0, "width": 500, "height": 400})
-                time.sleep(2.5)
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
                                      kwargs.get('monitor_bounds'), checkUntilGone=True)
-                count = 0
+                count = -int(kwargs.get('frames'))  # double the normal loading time
 
             # Display the pictuare
             if kwargs.get('debug'):
-                print("fps: {}".format(1 / (time.time() - last_time)))
+                cv2.putText(img=tmp,
+                            text=f"FPS:{1 / (time.time() - last_time)}",
+                            org=(5, 25),
+                            fontFace=cv2.FONT_HERSHEY_PLAIN,
+                            fontScale=1.2,
+                            color=(255, 0, 0),
+                            thickness=2)
+                if previous_cluster_count > 0:
+                    cv2.putText(img=tmp,
+                                text=f"Previous Cluster Count:{previous_cluster_count}",
+                                org=(5, 60),
+                                fontFace=cv2.FONT_HERSHEY_PLAIN,
+                                fontScale=1.2,
+                                color=(255, 0, 0),
+                                thickness=2)
                 cv2.imshow("OpenCV Foreground detection", tmp)
 
             # Press "q" to quit
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
+        run_bot(cluster_points, **kwargs)
 
 
 def update_global_clip_bounds(bounds_params, default_bounds):
@@ -185,6 +213,11 @@ if __name__ == "__main__":
                         help='number of ore nodes expected to be found from dbscan',
                         default=8
                         )
+
+    parser.add_argument('--wait_frames',
+                        dest='frames',
+                        help='Use this flag to change the amount of frames collected for foreground detection',
+                        default=60)
 
     parser.add_argument('--downsample',
                         dest='downsample',
