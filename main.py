@@ -15,7 +15,7 @@ from sklearn.cluster import DBSCAN
 total = 0
 
 
-def run_bot(cluster_points, *args, **kwargs):
+def run_bot(cluster_points, center_colors, *args, **kwargs):
     print(cluster_points)
     cluster_points = [tuple(x) for x in cluster_points]
 
@@ -27,7 +27,7 @@ def run_bot(cluster_points, *args, **kwargs):
         print(f"Current iteration:{idx + 1} out of: {len(_combinations)}")
         if kwargs.get('run_ocr'):
             print(f"Total Ore collected: {total}")
-        successful = clickOres(points, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
+        successful = clickOres(points, center_colors, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
         if successful:
             successful_combinations.append(points)
 
@@ -44,7 +44,7 @@ def run_bot(cluster_points, *args, **kwargs):
             print(f"Current iteration:{first_pass_count + idx + 1} out of: {len(_combinations) + first_pass_count}")
             if kwargs.get('run_ocr'):
                 print(f"Total Ore collected: {total}")
-            clickOres(points, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
+            clickOres(points, center_colors, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
         pass
 
     template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
@@ -53,28 +53,32 @@ def run_bot(cluster_points, *args, **kwargs):
     run(**kwargs)
 
 
-def clickOres(points, monitor_bounds, run_ocr=False):
-    for idx, item in enumerate(points):
-        point = [monitor_bounds['left'] + item[1], monitor_bounds['top'] + item[0]]
-        # print(f"Moving to:{point[0]},{point[1]}")
-        pyautogui.moveTo(point[0], point[1])
-        values = ('s', 0.01) if idx == len(points) - 1 else ('a', 0.76)
-        # print(f"keypressed:{values[0]},timeWait:{values[1]}")
-        pyautogui.press(values[0])
-        time.sleep(values[1])
+def clickOres(points, center_colors, monitor_bounds, run_ocr=False):
+    time.sleep(0.5)
+    if matched_pixel_colors(points, center_colors, monitor_bounds):
+        for idx, item in enumerate(points):
+            point = [monitor_bounds['left'] + item[1], monitor_bounds['top'] + item[0]]
+            # print(f"Moving to:{point[0]},{point[1]}")
+            pyautogui.moveTo(point[0], point[1])
+            values = ('s', 0.01) if idx == len(points) - 1 else ('a', 0.76)
+            # print(f"keypressed:{values[0]},timeWait:{values[1]}")
+            pyautogui.press(values[0])
+            time.sleep(values[1])
 
-    clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
-                                   monitor_bounds,
-                                   sleepUntilTrue=True,
-                                   checkUntilGone=True)
-    if not run_ocr:
-        return False
-    if clicked:
-        return False
-    if not ocr_extract_text():
-        return False
+        clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
+                                       monitor_bounds,
+                                       sleepUntilTrue=True,
+                                       checkUntilGone=True)
+        if not run_ocr:
+            return False
+        if clicked:
+            return False
+        if not ocr_extract_text():
+            return False
 
-    return True
+        return True
+
+    return False
 
 
 def extract_match(pattern, search_string):
@@ -104,6 +108,38 @@ def ocr_extract_text():
     return False
 
 
+def matched_pixel_colors(points, expected_colors, monitor_bounds):
+    matched = True
+    with mss.mss() as sct:
+        tmp_img = np.array(sct.grab(monitor_bounds))
+
+        cv2.imshow("Color match at Pixel Check", tmp_img)
+
+        for p in points:
+            point = [p[0], p[1]]
+
+            curr_idx = -1
+            for idx, val in enumerate(expected_colors):
+                if tuple(point) == expected_colors[idx][0]:
+                    curr_idx = idx
+            if curr_idx == -1:
+                print("Couldn't find matching point")
+                matched = False
+            if not almost_equal(expected_colors[curr_idx][1], tuple(tmp_img[int(point[0]), int(point[1]), :].tolist())):
+                print(f"Color at {point} did not equal previous matched. Skipping combination")
+                matched = False
+    return matched
+
+
+def almost_equal(current, previous):
+    equal = True
+    assert len(current) == len(previous)
+    for idx, val in enumerate(current):
+        if abs(previous[idx] - current[idx]) > 10:
+            equal = False
+    return equal
+
+
 def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntilGone=False):
     clicked = False
     with mss.mss() as sct:
@@ -113,6 +149,7 @@ def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntil
         ok = cv2.imread(template_path, cv2.IMREAD_UNCHANGED)
 
         result = cv2.matchTemplate(tmp_img, ok, cv2.TM_CCOEFF_NORMED)
+
         mn, mx, mnLoc, mxLoc = cv2.minMaxLoc(result)
         threshold = .8
 
@@ -130,6 +167,7 @@ def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntil
             MPx, MPy = mxLoc
             trows, tcols = ok.shape[:2]
             pyautogui.moveTo(bounds['left'] + ((MPx + MPx + tcols) / 2), bounds['top'] + ((MPy + MPy + trows) / 2))
+            time.sleep(0.05)
             pyautogui.click()
             clicked = True
             mx = -1 if not checkUntilGone else mx
@@ -156,6 +194,7 @@ def run(*args, **kwargs):
 
         time.sleep(2.5)
 
+        center_colors = []
         cluster_points = []
         previous_cluster_coordinates = []
         previous_cluster_count = -1
@@ -202,9 +241,12 @@ def run(*args, **kwargs):
                             current = points[idx]
                             out = aabb.create_from_points(current)
                             previous_cluster_coordinates.append(out)
-                        cv2.imwrite(f'{uuid.uuid4()}_downsampled.png', downsample)
+                    path = os.path.join(os.path.dirname(__file__), "training_set",
+                                        f'{uuid.uuid4()}_badmatch_downsampled.png')
+                    cv2.imwrite(path, downsample)
                 if n_clusters == int(kwargs.get('clusters')):
-
+                    path = os.path.join(os.path.dirname(__file__), "training_set", f'{uuid.uuid4()}_goodmatch_downsampled.png')
+                    cv2.imwrite(path, downsample)
                     for l in range(n_clusters):
                         idx = (labels == l)
                         current = points[idx]
@@ -214,6 +256,7 @@ def run(*args, **kwargs):
                         center[1] = center[1] * (2 ** int(kwargs.get('downsample')))
 
                         cluster_points.append(center)
+                        center_colors.append((tuple(center), tuple(img[int(center[0]), int(center[1]), :].tolist())))
 
                         if kwargs.get('debug'):
                             out = aabb.create_from_points(current)
@@ -255,13 +298,15 @@ def run(*args, **kwargs):
 
             count += 1
             if count > int(kwargs.get('frames')):
+                print("Attempting to work the mine")
                 template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'work_this_mine.png'),
-                                     {"top": 0, "left": 0, "width": 500, "height": 400})
+                                               {"top": 0, "left": 0, "width": 500, "height": 400})
                 clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
                                                kwargs.get('monitor_bounds'),
                                                sleepUntilTrue=True,
                                                checkUntilGone=True)
                 if clicked:
+                    print(f"Waiting for {int(kwargs.get('frames'))} frames")
                     count = - int(kwargs.get('frames'))  # double the normal loading time
 
             # Display the pictuare
@@ -307,7 +352,7 @@ def run(*args, **kwargs):
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
-        run_bot(cluster_points, **kwargs)
+        run_bot(cluster_points, center_colors, **kwargs)
 
 
 def update_global_clip_bounds(bounds_params, default_bounds):
@@ -386,5 +431,8 @@ if __name__ == "__main__":
 
     if args['run_ocr']:
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "training_set")):
+        os.path.mkdir(os.path.join(os.path.dirname(__file__), "training_set"))
 
     run(**args)
