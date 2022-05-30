@@ -245,6 +245,7 @@ def run(*args, **kwargs):
                                         f'{uuid.uuid4()}_badmatch_downsampled.png')
                     cv2.imwrite(path, downsample)
                 if n_clusters == int(kwargs.get('clusters')):
+                    previous_cluster_coordinates = []
                     path = os.path.join(os.path.dirname(__file__), "training_set", f'{uuid.uuid4()}_goodmatch_downsampled.png')
                     cv2.imwrite(path, downsample)
                     for l in range(n_clusters):
@@ -432,7 +433,7 @@ if __name__ == "__main__":
     if args['run_ocr']:
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
-    if os.path.exists(os.path.join(os.path.dirname(__file__), "training_set")):
-        os.path.mkdir(os.path.join(os.path.dirname(__file__), "training_set"))
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), "training_set")):
+        os.mkdir(os.path.join(os.path.dirname(__file__), "training_set"))
 
     run(**args)
