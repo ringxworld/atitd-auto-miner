@@ -243,8 +243,16 @@ def run(*args, **kwargs):
                             previous_cluster_coordinates.append(out)
                     path = os.path.join(os.path.dirname(__file__), "training_set",
                                         f'{uuid.uuid4()}_badmatch_downsampled.png')
-                    cv2.imwrite(path, downsample)
+                    print("Didn't match the expected number of clusters. Retrying")
+                    if kwargs.get('debug'):
+                        cv2.imwrite(path, downsample)
+                    time.sleep(1)
+                    template_match_click(
+                        os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+                        {"top": 0, "left": 0, "width": 500, "height": 400})
+
                 if n_clusters == int(kwargs.get('clusters')):
+                    print("Found correct number of clusters. Gathering center points to start Mining mini-game")
                     previous_cluster_coordinates = []
                     path = os.path.join(os.path.dirname(__file__), "training_set", f'{uuid.uuid4()}_goodmatch_downsampled.png')
                     cv2.imwrite(path, downsample)
