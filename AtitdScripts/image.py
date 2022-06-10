@@ -8,6 +8,31 @@ import time
 from AtitdScripts.utils import almost_equal, extract_match
 
 
+
+def get_circles_from_foreground(img, debug=False, intensity_lower=70, intensity_upper=150):
+    img = cv2.medianBlur(img, 5)
+    cimg = cv2.cvtColor(img, cv.COLOR_GRAY2BGR)
+
+    edge = cv2.canny(img, intensity_lower, intensity_upper)
+    circles = cv.HoughCircles(edge,
+                              cv.HOUGH_GRADIENT,
+                              2,
+                              20,
+                              param1=50,
+                              param2=30,
+                              minRadius=90,
+                              maxRadius=100)
+
+    if debug:
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for i in circles[0,:]:
+                cv.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+                cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+                cv.imshow('detected circles', cimg)
+                
+    return circles
+
 def matched_pixel_colors(points, expected_colors, monitor_bounds):
     matched = True
     with mss.mss() as sct:
