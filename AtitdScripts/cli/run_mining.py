@@ -95,8 +95,7 @@ def main():
     if not os.path.exists(os.path.join(os.path.dirname(__file__), "training_set")):
         os.mkdir(os.path.join(os.path.dirname(__file__), "training_set"))
 
-    return args
+    run(**args)
 
 if __name__ == "__main__":
-    args = main()
-    run(**args)
+    main()
