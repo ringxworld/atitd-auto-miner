@@ -28,7 +28,7 @@ Press ALT + L ingame to lock camera to this position
 with a command line terminal open run the script
 ```commandline
 cd /path/to/repo/root
-python main.py --clusters 7 --downsample 3 --eps 1 --min_samples 40
+run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40
 ```
 
 ### Troubleshooting
@@ -36,7 +36,7 @@ python main.py --clusters 7 --downsample 3 --eps 1 --min_samples 40
 include --debug flag for FPS and seeing what the script views as foreground pixels
 
 ```commandline
-python main.py --clusters 7 --downsample 3 --eps 1 --min_samples 40 --debug
+run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40 --debug
 ```
 
 If the default bounds being shown with --debug aren't fitting all the nodes. 
@@ -46,7 +46,7 @@ Zoom out or change the bounds its searching for foreground pixels in:
 ```commandline
 Change bounds to the length of your window that you wish to screen cap
 
-python main.py --clusters 7 --downsample 3 --eps 1 --min_samples 40 --bounds 200 500 950 740
+run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40 --bounds 200 500 950 740
 
 ```
 
@@ -55,5 +55,5 @@ python main.py --clusters 7 --downsample 3 --eps 1 --min_samples 40 --bounds 200
 For full list of supported arguments type:
 
 ```commandline
-python main.py --help
+run_miner --help
 ```
