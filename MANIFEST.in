@@ -1,2 +1,2 @@
-include ATITDScripts/images/*.png
-include ATITDScripts/sounds/*.wav
+include AtitdScripts/images/*.png
+include AtitdScripts/sounds/*.wav

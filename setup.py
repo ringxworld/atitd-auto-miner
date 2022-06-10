@@ -11,7 +11,7 @@ with open('requirements.txt', 'r') as fp:
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 
-setup(name='',
+setup(name='AtitdScripts',
       version="0.0.1",
       description='',
       long_description=long_description,
@@ -24,8 +24,8 @@ setup(name='',
       python_requires='>=3.6',
       entry_points={
           'console_scripts': [
-              'run_miner=ATITDScripts.cli.run_mining:main',
-              'run_foreground_alert=ATITDScripts.cli.run_foreground_alert:main'
+              'run_miner=AtitdScripts.cli.run_mining:main',
+              'run_foreground_alert=AtitdScripts.cli.run_foreground_alert:main'
           ]
       }
      )
