@@ -5,12 +5,21 @@ import os
 
 import pytesseract
 
+from AtitdScripts.tracker import Tracker
 from AtitdScripts.mining.mining import Mining
 
 
 def run(*args, **kwargs):
-    mining = Mining(**kwargs)
+    tracker = Tracker(**kwargs)
+    mining = Mining(tracker, **kwargs)
     mining.run()
+
+
+def update_global_clip_bounds(bounds_params, default_bounds):
+    keys = list(default_bounds.keys())
+    for idx in range(len(bounds_params)):
+        default_bounds[keys[idx]] = int(bounds_params[idx])
+    return default_bounds
 
 
 if __name__ == "__main__":

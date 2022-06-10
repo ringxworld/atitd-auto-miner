@@ -74,19 +74,18 @@ class OreHandler(object):
                 pyautogui.press(values[0])
                 time.sleep(values[1])
 
-            clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'AtitdScripts', '../images',
+            clicked = template_match_click(os.path.join(os.path.dirname(__file__), '..', 'cli', 'images',
                                                         'ok.png'),
                                            self.monitor_bounds,
                                            sleepUntilTrue=True,
                                            checkUntilGone=True)
 
-            success, count = ocr_extract_text(self.ocr_bounds)
-            self.total += count
-
-            if not self.run_ocr:
-                return False
             if clicked:
                 return False
+            if not self.run_ocr:
+                return False
+            success, count = ocr_extract_text(self.ocr_bounds)
+            self.total += count
             if not success:
                 return False
             return True

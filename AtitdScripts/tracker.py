@@ -7,6 +7,7 @@ import time
 class Tracker(object):
 
     def __init__(self, *args, **kwargs):
+        cv2.startWindowThread()
         self.fgbg = cv2.createBackgroundSubtractorMOG2()
         self.running = True
 
@@ -37,15 +38,20 @@ class Tracker(object):
         with mss.mss() as sct:
             while self.running:
                 last_time = time.time()
-                img = np.array(sct.grab(monitor))  # Get raw pixels from the screen, save it to a Numpy array
+                img = np.array(sct.grab(self.monitor_bounds))  # Get raw pixels from the screen, save it to an array
                 mask = self.fgbg.apply(img)
                 tmp = cv2.bitwise_and(img, img, mask=mask)
                 if self.debug_mode:
-                    self.run_debug(tmp)
+                    # print(f"FPS:{1 / (time.time() - last_time)}")
+                    #self.run_debug(tmp)
+                    cv2.imshow("OpenCV Foreground detection", tmp)
 
                 if self.maxForegroundPixels > cv2.countNonZero(mask) > self.minForegroundPixels \
                         and self.wait_frames > self.curr_frame:
-                    return img, mask
+                    return True, img, mask
+
+                if self.curr_frame > self.wait_frames:
+                    return False, None, None
 
                 # Press "q" to quit
                 if cv2.waitKey(25) & 0xFF == ord("q"):
@@ -54,7 +60,6 @@ class Tracker(object):
                 self.curr_frame += 1
 
     def run_debug(self, img):
-        cv2.imshow("OpenCV Foreground detection", img)
         for _drawable in self._drawables:
             if _drawable["cv2_put_text"]:
                 cv2.putText(img=img, text=_drawable['text'], org=_drawable['org'], fontFace=_drawable['fontFace'],
@@ -63,6 +68,7 @@ class Tracker(object):
             if _drawable["cv2_rectangle"]:
                 cv2.rectangle(img=img, pt1=_drawable['pt1'], pt2=_drawable['pt2'], color=_drawable['color'],
                               thickness=_drawable['thickness'])
+        cv2.imshow("OpenCV Foreground detection", img)
 
     def set_drawables(self, drawables):
         self._drawables = drawables

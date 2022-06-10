@@ -14,8 +14,8 @@ from sklearn.cluster import DBSCAN
 
 class Mining(object):
 
-    def __init__(self, **kwargs):
-        self.tracker = Tracker(**kwargs)
+    def __init__(self, tracker, **kwargs):
+        self.tracker = tracker
 
         self.total_collected = 0
 
@@ -26,9 +26,15 @@ class Mining(object):
 
         self.kwargs = kwargs
 
+        self.running = True
+
         self.debug_mode = False
         if kwargs.get('debug'):
             self.debug_mode = True
+
+        self.monitor_bounds = {"top": 200, "left": 500, "width": 950, "height": 740}
+        if kwargs.get('monitor_bounds'):
+            self.monitor_bounds = kwargs.get('monitor_bounds')
 
         self.downsample = 0
         if kwargs.get('downsample'):
@@ -46,15 +52,32 @@ class Mining(object):
         if kwargs.get('min_samples'):
             self.dbscan_min_samples = int(kwargs.get('min_samples'))
 
-    def run(self):
         # Always Reset mine on start
         template_match_click(
-            os.path.join(os.path.dirname(__file__), 'AtitdScripts', 'images', 'stop_working_this_mine.png'),
+            os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'stop_working_this_mine.png'),
             {"top": 0, "left": 0, "width": 500, "height": 400})
         time.sleep(2.5)
 
+    def run(self):
+        while self.running:
+            self.run_handler()
+
+    def run_handler(self):
         # Start Foreground tracker
-        img, mask = self.tracker.run()
+        status, img, mask = self.tracker.run()
+
+        if not status:
+            logging.info("Attempting to work the mine")
+            template_match_click(os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'work_this_mine.png'),
+                                 {"top": 0, "left": 0, "width": 500, "height": 400})
+            clicked = template_match_click(os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'ok.png'),
+                                           self.monitor_bounds,
+                                           sleepUntilTrue=True,
+                                           checkUntilGone=True)
+            if clicked:
+                logging.info(f"Waiting {self.tracker.wait_frames} to find current foreground")
+                self.tracker.curr_frame = 0
+            return
 
         logging.info("Checking for clusters")
         downsample = mask.copy()
@@ -85,7 +108,7 @@ class Mining(object):
 
             time.sleep(1)
             template_match_click(
-                os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+                os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'stop_working_this_mine.png'),
                 {"top": 0, "left": 0, "width": 500, "height": 400})
             self.tracker.curr_frame = 0
 
@@ -107,7 +130,7 @@ class Mining(object):
                 center_colors.append((tuple(center), tuple(img[int(center[0]), int(center[1]), :].tolist())))
 
                 if self.debug_mode:
-                    self.add_debug_overlay(self, current, _l)
+                    self.add_debug_overlay(current, _l)
 
             self.tracker.running = False
             if self.debug_mode:
@@ -116,7 +139,7 @@ class Mining(object):
             total = OreHandler(self.total_collected, cluster_points, center_colors, **self.kwargs).play()
             self.total_collected += total
             template_match_click(
-                os.path.join(os.path.dirname(__file__), 'AtitdScripts', 'images', 'stop_working_this_mine.png'),
+                os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'stop_working_this_mine.png'),
                 {"top": 0, "left": 0, "width": 500, "height": 400})
             time.sleep(2.5)
 
