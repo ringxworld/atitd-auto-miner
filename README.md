@@ -14,7 +14,8 @@ conda activate ATITDScripts
 conda install pip
 cd /path/to/repo/root/
 pip install -r requirements.txt
-python main.py --help
+python setup.py develop
+run_miner --help
 ```
 
 ### Usage

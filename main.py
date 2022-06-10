@@ -12,6 +12,7 @@ import pytesseract
 from pyrr import aabb
 from sklearn.cluster import DBSCAN
 
+from playsound import playsound
 total = 0
 
 
@@ -47,7 +48,7 @@ def run_bot(cluster_points, center_colors, *args, **kwargs):
             clickOres(points, center_colors, kwargs.get('monitor_bounds'), kwargs.get('run_ocr'))
         pass
 
-    template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+    template_match_click(os.path.join(os.path.dirname(__file__), 'AtitdScripts/images', 'stop_working_this_mine.png'),
                          {"top": 0, "left": 0, "width": 500, "height": 400})
     time.sleep(2.5)
     run(**kwargs)
@@ -65,7 +66,7 @@ def clickOres(points, center_colors, monitor_bounds, run_ocr=False):
             pyautogui.press(values[0])
             time.sleep(values[1])
 
-        clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'ok.png'),
+        clicked = template_match_click(os.path.join(os.path.dirname(__file__), 'AtitdScripts/images', 'ok.png'),
                                        monitor_bounds,
                                        sleepUntilTrue=True,
                                        checkUntilGone=True)
@@ -189,7 +190,7 @@ def run(*args, **kwargs):
 
         monitor = kwargs.get('monitor_bounds')
 
-        template_match_click(os.path.join(os.path.dirname(__file__), 'images', 'stop_working_this_mine.png'),
+        template_match_click(os.path.join(os.path.dirname(__file__), 'AtitdScripts/images', 'stop_working_this_mine.png'),
                              {"top": 0, "left": 0, "width": 500, "height": 400})
 
         time.sleep(2.5)
@@ -198,7 +199,8 @@ def run(*args, **kwargs):
         cluster_points = []
         previous_cluster_coordinates = []
         previous_cluster_count = -1
-
+        my_frame = 0
+        previous_triggered = False
         while running:
 
             last_time = time.time()
@@ -210,6 +212,11 @@ def run(*args, **kwargs):
             color = ('b', 'g', 'r')
 
             tmp = cv2.bitwise_and(img, img, mask=mask)
+            foreground_count = cv2.countNonZero(mask)
+            if 300000 > foreground_count > 10000:
+                sound_effect = os.path.join(os.path.dirname(__file__), "AtitdScripts", "sounds", "alert.wav")
+                print(os.path.exists(sound_effect))
+                playsound(sound_effect)
 
             foreground_count = cv2.countNonZero(mask)
             if 300000 > foreground_count > 10000 and count >= int(kwargs.get('frames')):
@@ -361,7 +368,7 @@ def run(*args, **kwargs):
             if cv2.waitKey(25) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
-        run_bot(cluster_points, center_colors, **kwargs)
+        # run_bot(cluster_points, center_colors, **kwargs)
 
 
 def update_global_clip_bounds(bounds_params, default_bounds):
