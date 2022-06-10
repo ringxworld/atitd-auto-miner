@@ -30,7 +30,7 @@ def get_circles_from_foreground(img, debug=False, intensity_lower=70, intensity_
                 cv.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
                 cv.imshow('detected circles', cimg)
-                
+
     return circles
 
 def matched_pixel_colors(points, expected_colors, monitor_bounds):
