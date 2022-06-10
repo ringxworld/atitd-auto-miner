@@ -15,7 +15,7 @@ class OreHandler(object):
 
         self.cluster_points = [tuple(x) for x in cluster_points]
         self.center_colors = center_colors
-        self._combinations = list(combinations(cluster_points, 3))  # Default combinations, groups of 3
+        self._combinations = list(combinations(self.cluster_points, 3))  # Default combinations, groups of 3
 
         self.run_ocr = False
         if kwargs.get('run_ocr'):
