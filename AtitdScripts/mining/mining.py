@@ -64,7 +64,13 @@ class Mining(object):
 
     def run_handler(self):
         # Start Foreground tracker
-        status, img, mask = self.tracker.run()
+        results = self.tracker.run()
+
+        if results is None:
+            logging.info("something went wrong with tracker")
+            return
+
+        status, img, mask = results
 
         if not status:
             logging.info("Attempting to work the mine")
@@ -111,6 +117,7 @@ class Mining(object):
                 os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'stop_working_this_mine.png'),
                 {"top": 0, "left": 0, "width": 500, "height": 400})
             self.tracker.curr_frame = 0
+            return
 
         if n_clusters == self.clusters:
             logging.info("Found correct number of clusters. Gathering center points to start Mining mini-game")
@@ -131,8 +138,6 @@ class Mining(object):
 
                 if self.debug_mode:
                     self.add_debug_overlay(current, _l)
-
-            self.tracker.running = False
             if self.debug_mode:
                 self.tracker.set_drawables(self._drawables)
                 self._drawables = []  # clear after sending
@@ -142,6 +147,7 @@ class Mining(object):
                 os.path.join(os.path.dirname(__file__), '..', 'cli', 'images', 'stop_working_this_mine.png'),
                 {"top": 0, "left": 0, "width": 500, "height": 400})
             time.sleep(2.5)
+            return
 
     def add_debug_overlay(self, current, idx):
         out = aabb.create_from_points(current)
