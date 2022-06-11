@@ -36,7 +36,7 @@ run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40
 include --debug flag for FPS and seeing what the script views as foreground pixels
 
 ```commandline
-run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40 --debug
+run_mine --debug
 ```
 
 If the default bounds being shown with --debug aren't fitting all the nodes. 
@@ -46,7 +46,8 @@ Zoom out or change the bounds its searching for foreground pixels in:
 ```commandline
 Change bounds to the length of your window that you wish to screen cap
 
-run_miner --clusters 7 --downsample 3 --eps 1 --min_samples 40 --bounds 200 500 950 740
+Working runtimeparams, change cluster count depending on clusters per rock type
+run_miner --clusters 7 --wait_frames 100 --downsample 4 --eps 1 --min_samples 750 --run_ocr --four_combinations --debug
 
 ```
 
