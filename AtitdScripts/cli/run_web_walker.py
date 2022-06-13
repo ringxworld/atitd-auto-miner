@@ -8,6 +8,7 @@ from AtitdScripts.webwalker.auto_walker import AutoWalker
 
 def run(*args, **kwargs):
     auto_walker = AutoWalker(os.path.join(os.path.dirname(__file__), "..", "test", "data", "test_web.yml"),
+                             None,
                              **kwargs)
 
     auto_walker.run()
@@ -26,7 +27,7 @@ def main():
                              "do this on windows check here: https://github.com/UB-Mannheim/tesseract/wiki")
 
     parser.add_argument('--end_coord', nargs='+',
-                        help='Usage:              --end_coord  1000, 10000 '
+                        help='Usage:              --end_coord  1000 10000 '
                              'Type the coordinate to path to using the web walker')
 
     args = vars(parser.parse_args())
