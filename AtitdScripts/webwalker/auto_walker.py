@@ -27,7 +27,8 @@ class AutoWalker(object):
 
         self.end_coordinate = end_coordinate
         if kwargs.get("end_coord"):
-            self.end_coordinate = kwargs.get("end_coord")
+            x, y = kwargs.get("end_coord")
+            self.end_coordinate = [int(x), int(y)]
 
         ocr_result = self.get_coordinates(self.ocr_bounds, r'-?\d+\.?\d*')
         if not ocr_result:
