@@ -104,9 +104,11 @@ class AutoWalker(object):
     @staticmethod
     def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
-            img = np.array(sct.grab(ocr_bounds))
+            img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
+            custom_oem_psm_config = r'--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789-,'
 
-            found_text = [i for i in pytesseract.image_to_string(img).split("\n") if i != "" and "HOME REGION" not in i]
+            found_text = [i for i in pytesseract.image_to_string(img, config=custom_oem_psm_config).split("\n")
+                          if i != "" and "HOME REGION" not in i]
             datetime = found_text[0]
             coordinates = found_text[1]
             text = extract_match(pattern, coordinates)
