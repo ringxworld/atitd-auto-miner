@@ -16,7 +16,7 @@ from AtitdScripts.webwalker.WebTreeStructure import WebWalkerTree
 
 class AutoWalker(object):
 
-    def __init__(self, web, **kwargs):
+    def __init__(self, web, end_coordinate, **kwargs):
         self.running = True
 
         self.web = WebWalkerTree(node_definitions=web)
@@ -25,12 +25,16 @@ class AutoWalker(object):
         if kwargs.get('ocr_bounds'):
             self.ocr_bounds = kwargs.get('ocr_bounds')
 
+        self.end_coordinate = end_coordinate
+        if kwargs.get("end_coord"):
+            self.end_coordinate = kwargs.get("end_coord")
+
         ocr_result = self.get_coordinates(self.ocr_bounds, r'-?\d+\.?\d*')
         if not ocr_result:
             return
         x, y = ocr_result
 
-        self.coordinates = self.web.get_best_path_from_coordinates(start=[x, y], end=[2322, 2106])
+        self.coordinates = self.web.get_best_path_from_coordinates(start=[x, y], end=self.end_coordinate)
         self.current = 0
 
         self.curr_press_dir = None
@@ -74,7 +78,6 @@ class AutoWalker(object):
 
             shouldPress = False
             if abs(self.coordinates[self.current][0] - x) < 2 and abs(self.coordinates[self.current][1] -y) < 2:
-                print("should press")
                 shouldPress = True
 
             if curr_press_dir != self.prev_press_dir:
@@ -97,8 +100,6 @@ class AutoWalker(object):
 
             self.curr_press_dir = curr_press_dir
 
-
-
     @staticmethod
     def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
@@ -109,7 +110,13 @@ class AutoWalker(object):
             coordinates = found_text[1]
             text = extract_match(pattern, coordinates)
 
-            if text:
+            if text and len(text) > 1:
                 return int(text[-2]), int(text[-1])
+            if len(text) == 1:
+                # Handle the parsing case of ex: ["1000,343"]
+                # TODO: Improve the pattern to prevent this
+                text = text[0].split(",")
+                if len(text) == 2:
+                    return int(text[0]), int(text[1])
             return False
         return text
