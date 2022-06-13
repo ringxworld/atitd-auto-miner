@@ -1,10 +1,16 @@
 import os
 
+import mss
+import numpy as np
 import pyautogui
 import time
 
-from AtitdScripts.image import matched_pixel_colors, template_match_click, ocr_extract_text
+import pytesseract
+
+from AtitdScripts.image import matched_pixel_colors, template_match_click
 from itertools import combinations
+
+from AtitdScripts.utils import extract_match
 
 
 class OreHandler(object):
@@ -84,9 +90,24 @@ class OreHandler(object):
                 return False
             if not self.run_ocr:
                 return False
-            success, count = ocr_extract_text(self.ocr_bounds)
+            success, count = self.ocr_extract_text(self.ocr_bounds, "workload had:(.*)")
             self.total += count
             if not success:
                 return False
             return True
         return False
+
+    @staticmethod
+    def get_ore_ocr(ocr_bounds, pattern):
+        res = (False, 0)
+        with mss.mss() as sct:
+            img = np.array(sct.grab(ocr_bounds))
+            text = extract_match(pattern, pytesseract.image_to_string(img))
+            count = None
+
+            if text:
+                count = [int(s) for s in text[0].split() if s.isdigit()]
+
+            if count:
+                res = (True, count[0])
+        return res

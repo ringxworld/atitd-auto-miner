@@ -96,11 +96,5 @@ def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntil
     return clicked
 
 
-def ocr_extract_text(ocr_bounds):
-    with mss.mss() as sct:
-        img = np.array(sct.grab(ocr_bounds))
-        matched, count = extract_match("workload had:(.*)", pytesseract.image_to_string(img))
-        if matched:
-            return True, count
-    return False, 0
+
 

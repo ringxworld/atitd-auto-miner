@@ -1,5 +1,9 @@
 import re
 
+import numpy as np
+import psutil
+
+from scipy.spatial.distance import cdist
 
 def almost_equal(current, previous):
     equal = True
@@ -13,12 +17,27 @@ def almost_equal(current, previous):
 def extract_match(pattern, search_string):
     p = re.compile(pattern)
     text = p.findall(search_string)
-    count = None
+    return text
 
-    if text:
-        count = [int(s) for s in text[0].split() if s.isdigit()]
 
-    if not count:
-        return False, 0
+def find_procs_by_name(name):
+    """Return a list of processes matching 'name'."""
+    assert name, name
+    ls = []
+    for p in psutil.process_iter():
+        name_, exe, cmdline = "", "", []
+        try:
+            name_ = p.name()
+            cmdline = p.cmdline()
+            exe = p.exe()
+        except (psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+        except psutil.NoSuchProcess:
+            continue
+        if name == name_ or (len(cmdline) > 0 and cmdline[0] == name) or os.path.basename(exe) == name:
+            ls.append(p)
+    return ls
 
-    return True, count[0]
+
+def manhattan(A, B):
+    return np.abs(A - B).sum()
