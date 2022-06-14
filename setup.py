@@ -25,7 +25,8 @@ setup(name='AtitdScripts',
       entry_points={
           'console_scripts': [
               'run_miner=AtitdScripts.cli.run_mining:main',
-              'run_foreground_alert=AtitdScripts.cli.run_foreground_alert:main'
+              'run_foreground_alert=AtitdScripts.cli.run_foreground_alert:main',
+              'run_autowalker=AtitdScripts.cli.run_web_walker:main'
           ]
       }
      )
