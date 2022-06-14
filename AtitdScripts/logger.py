@@ -15,7 +15,7 @@ def setup_logger(filepath=os.path.join(os.path.dirname(__file__), 'logs'), filen
         pathlib.Path(filepath).mkdir(parents=True)
 
     logging.basicConfig(level=level,
-                        format='%s(asctime)s %(levelname)-8s %(message)s',
+                        format='%(message)s',
                         datefmt='%a, %d %b %Y %H:%M:%S',
                         )
 
@@ -24,7 +24,7 @@ def setup_logger(filepath=os.path.join(os.path.dirname(__file__), 'logs'), filen
     console.setLevel(logging.INFO)
 
     # set a formatter which is simpler for console use
-    formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(message)s', "%Y-%m-%d %H:%M.%S")
+    formatter = logging.Formatter('%(message)s', "%Y-%m-%d %H:%M.%S")
 
     # tell the handler to use this format
     console.setFormatter(formatter)

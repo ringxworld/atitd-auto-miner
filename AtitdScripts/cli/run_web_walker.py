@@ -7,6 +7,7 @@ from AtitdScripts.webwalker.auto_walker import AutoWalker
 
 
 def run(*args, **kwargs):
+    logging.info("Starting Web walker")
     auto_walker = AutoWalker(os.path.join(os.path.dirname(__file__), "..", "test", "data", "test_web.yml"),
                              None,
                              **kwargs)
@@ -16,6 +17,7 @@ def run(*args, **kwargs):
 
 def main():
     import argparse
+    from AtitdScripts import logger
 
     parser = argparse.ArgumentParser(description="")
 
@@ -40,6 +42,8 @@ def main():
 
     if args['run_ocr']:
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+
+    logger.setup_logger(level=logging.INFO)
 
     run(**args)
 

@@ -1,13 +1,16 @@
+import logging
+import queue
 import time
 
 import cv2
 import mss
 import numpy as np
 import pydirectinput
-from PIL import Image, ImageFilter, ImageEnhance
+from PIL import Image, ImageOps, ImageEnhance
 from pytesseract import pytesseract
 
 from AtitdScripts.utils import extract_match
+from AtitdScripts.image import maintain_aspect_ratio_resize
 from AtitdScripts.webwalker.WebTreeStructure import WebWalkerTree
 
 
@@ -38,6 +41,11 @@ class AutoWalker(object):
         self.curr_press_dir = None
         self.prev_press_dir = None
 
+        pydirectinput.keyUp("left")
+        pydirectinput.keyUp("right")
+        pydirectinput.keyUp("up")
+        pydirectinput.keyUp("down")
+
         print(f"Walking to: {self.coordinates[self.current]}")
 
     def run(self):
@@ -53,10 +61,11 @@ class AutoWalker(object):
                 return
 
             x, y = ocr_result
-            print(f"Current:{x},{y}, moving towards: {self.coordinates[self.current]}")
+
+            logging.info(f"Current:{x},{y}, moving towards: {self.coordinates[self.current]}")
 
             if (x, y) == tuple(self.coordinates[self.current]):
-                print(f"Walking to: {self.coordinates[self.current]}")
+                logging.info(f"Walking to: {self.coordinates[self.current]}")
                 self.curr_press_dir = None
                 self.current += 1
                 if self.current > len(self.coordinates) - 1:
@@ -101,12 +110,15 @@ class AutoWalker(object):
     @staticmethod
     def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
-            enhancer = ImageEnhance.Contrast(Image.fromarray(cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)))
-            _img = enhancer.enhance(5)
+            img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
+            img = maintain_aspect_ratio_resize(img, width=int(img.shape[1] * 1.2))
+            enhancer = ImageEnhance.Contrast(Image.fromarray(img))
+            img = enhancer.enhance(100)
+            img = ImageOps.expand(img, border=10, fill='white')
 
-            custom_oem_psm_config = r'--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789-,'
+            custom_oem_psm_config = r'--psm 6 '
 
-            found_text = [i for i in pytesseract.image_to_string(_img, lang='eng', config=custom_oem_psm_config).split("\n")
+            found_text = [i for i in pytesseract.image_to_string(img, lang='eng', config=custom_oem_psm_config).split("\n")
                           if i != "" and "HOME REGION" not in i]
             if len(found_text) < 2:
                 return False
@@ -115,11 +127,7 @@ class AutoWalker(object):
             text = extract_match(pattern, coordinates)
 
             if text and len(text) > 1:
-
-                if int(text[-2]) > 0:
-                    print("wait")
-
-                return int(text[-2]), int(text[-1])
+                return int(float(text[-2])), int(float(text[-1]))
             if len(text) == 1:
                 # Handle the parsing case of ex: ["1000,343"]
                 # TODO: Improve the pattern to prevent this
