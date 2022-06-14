@@ -1,13 +1,10 @@
-import threading
 import time
 
 import cv2
 import mss
 import numpy as np
-import pyautogui
 import pydirectinput
-from threading import Thread
-
+from PIL import Image, ImageFilter, ImageEnhance
 from pytesseract import pytesseract
 
 from AtitdScripts.utils import extract_match
@@ -50,7 +47,7 @@ class AutoWalker(object):
     def run_handler(self):
         while self.running:
             # map coordinates, come up with a better pattern later
-            ocr_result = self.get_coordinates(self.ocr_bounds, r'\d+(?:,\d+)?')
+            ocr_result = self.get_coordinates(self.ocr_bounds, r'-?\d+\.?\d*')
 
             if not ocr_result:
                 return
@@ -104,16 +101,24 @@ class AutoWalker(object):
     @staticmethod
     def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
-            img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
+            enhancer = ImageEnhance.Contrast(Image.fromarray(cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)))
+            _img = enhancer.enhance(5)
+
             custom_oem_psm_config = r'--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789-,'
 
-            found_text = [i for i in pytesseract.image_to_string(img, config=custom_oem_psm_config).split("\n")
+            found_text = [i for i in pytesseract.image_to_string(_img, lang='eng', config=custom_oem_psm_config).split("\n")
                           if i != "" and "HOME REGION" not in i]
+            if len(found_text) < 2:
+                return False
             datetime = found_text[0]
             coordinates = found_text[1]
             text = extract_match(pattern, coordinates)
 
             if text and len(text) > 1:
+
+                if int(text[-2]) > 0:
+                    print("wait")
+
                 return int(text[-2]), int(text[-1])
             if len(text) == 1:
                 # Handle the parsing case of ex: ["1000,343"]
