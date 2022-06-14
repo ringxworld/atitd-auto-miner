@@ -1,7 +1,7 @@
 import logging
 import queue
 import time
-
+from collections import defaultdict
 import cv2
 import mss
 import numpy as np
@@ -83,9 +83,13 @@ class AutoWalker(object):
             if x > self.coordinates[self.current][0]:
                 curr_press_dir = "left"
 
-            shouldPress = False
-            if abs(self.coordinates[self.current][0] - x) < 2 and abs(self.coordinates[self.current][1] -y) < 2:
-                shouldPress = True
+            shouldPress_lr = False
+            shouldPress_ud = False
+
+            if 0 < abs(self.coordinates[self.current][1] - y) < 2:
+                shouldPress_ud = True
+            if 0 < self.coordinates[self.current][0] - x < 2:
+                shouldPress_lr = True
 
             if curr_press_dir != self.prev_press_dir:
                 self.prev_press_dir = curr_press_dir
@@ -99,26 +103,42 @@ class AutoWalker(object):
                     time.sleep(0.3)
 
             if curr_press_dir:
-                if not shouldPress:
-                    pydirectinput.keyDown(curr_press_dir)
-                else:
+                if shouldPress_lr:
+                    if x < self.coordinates[self.current][0]:
+                        curr_press_dir = "right"
+                    if x > self.coordinates[self.current][0]:
+                        curr_press_dir = "left"
                     pydirectinput.keyUp(curr_press_dir)
                     pydirectinput.press(curr_press_dir)
+                if shouldPress_ud:
+                    if y < self.coordinates[self.current][1]:
+                        curr_press_dir = "up"
+                    if y > self.coordinates[self.current][1]:
+                        curr_press_dir = "down"
+                    pydirectinput.keyUp(curr_press_dir)
+                    pydirectinput.press(curr_press_dir)
+                if not shouldPress_lr and not shouldPress_ud:
+                    pydirectinput.keyDown(curr_press_dir)
 
             self.curr_press_dir = curr_press_dir
 
     @staticmethod
-    def get_coordinates(ocr_bounds, pattern):
+    def most_agreed_answer(img, pattern, resize_ratio):
+        pass
+
+    def get_coordinates(self, ocr_bounds, pattern):
         with mss.mss() as sct:
-            img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
-            img = maintain_aspect_ratio_resize(img, width=int(img.shape[1] * 1.2))
+            _img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
+
+            img = cv2.resize(_img, None, fx=2, fy=2)
             enhancer = ImageEnhance.Contrast(Image.fromarray(img))
             img = enhancer.enhance(100)
             img = ImageOps.expand(img, border=10, fill='white')
 
-            custom_oem_psm_config = r'--psm 6 '
+            custom_oem_psm_config = r'--psm 6 -c tessedit_char_whitelist=0123456789,-'
 
-            found_text = [i for i in pytesseract.image_to_string(img, lang='eng', config=custom_oem_psm_config).split("\n")
+            found_text = [i for i in
+                          pytesseract.image_to_string(img, lang='eng', config=custom_oem_psm_config).split("\n")
                           if i != "" and "HOME REGION" not in i]
             if len(found_text) < 2:
                 return False
@@ -134,5 +154,6 @@ class AutoWalker(object):
                 text = text[0].split(",")
                 if len(text) == 2:
                     return int(text[0]), int(text[1])
+
             return False
         return text
