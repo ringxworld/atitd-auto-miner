@@ -39,5 +39,16 @@ def find_procs_by_name(name):
     return ls
 
 
+def total_dist(points, metric="cityblock"):
+    total = 0
+    for idx, val in enumerate(points):
+        if idx < len(points) - 1:
+            if metric == "cityblock":
+                total += manhattan(np.asarray(val), np.asarray(points[idx+1]))
+            else:
+                raise NotImplementedError
+    return total
+
+
 def manhattan(A, B):
     return np.abs(A - B).sum()
