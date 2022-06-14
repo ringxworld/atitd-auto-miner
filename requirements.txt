@@ -11,3 +11,4 @@ setuptools~=61.2.0
 pywinauto~=0.6.8
 psutil~=5.9.1
 pydirectinput~=1.0.4
+pyyaml==6.0
