@@ -1,16 +1,13 @@
 import logging
-import queue
 import time
-from collections import defaultdict
+
 import cv2
 import mss
 import numpy as np
 import pydirectinput
-from PIL import Image, ImageOps, ImageEnhance
 from pytesseract import pytesseract
 
 from AtitdScripts.utils import extract_match
-from AtitdScripts.image import maintain_aspect_ratio_resize
 from AtitdScripts.webwalker.WebTreeStructure import WebWalkerTree
 
 
@@ -123,19 +120,15 @@ class AutoWalker(object):
             self.curr_press_dir = curr_press_dir
 
     @staticmethod
-    def most_agreed_answer(img, pattern, resize_ratio):
-        pass
-
-    def get_coordinates(self, ocr_bounds, pattern):
+    def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
             _img = cv2.cvtColor(np.array(sct.grab(ocr_bounds)), cv2.COLOR_BGR2GRAY)
+            img = cv2.resize(_img, None, fx=2.4, fy=2.4)
+            ret, img = cv2.threshold(img, 170, 255, cv2.THRESH_TOZERO)
+            img = cv2.threshold(img, 170, 255, cv2.THRESH_TOZERO)[1]
+            img = cv2.threshold(img, 170, 255, cv2.THRESH_BINARY_INV)[1]
 
-            img = cv2.resize(_img, None, fx=2, fy=2)
-            enhancer = ImageEnhance.Contrast(Image.fromarray(img))
-            img = enhancer.enhance(100)
-            img = ImageOps.expand(img, border=10, fill='white')
-
-            custom_oem_psm_config = r'--psm 6 -c tessedit_char_whitelist=0123456789,-'
+            custom_oem_psm_config = r'--psm 3 -c tessedit_char_whitelist=0123456789,-'
 
             found_text = [i for i in
                           pytesseract.image_to_string(img, lang='eng', config=custom_oem_psm_config).split("\n")
@@ -144,6 +137,7 @@ class AutoWalker(object):
                 return False
             datetime = found_text[0]
             coordinates = found_text[1]
+
             text = extract_match(pattern, coordinates)
 
             if text and len(text) > 1:
