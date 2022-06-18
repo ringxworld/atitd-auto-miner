@@ -18,7 +18,7 @@ class AutoWalker(object):
 
         self.web = WebWalkerTree(node_definitions=web)
 
-        self.ocr_bounds = {"top": 0, "left": 850, "width": 220, "height": 100}
+        self.ocr_bounds = {"top": 35, "left": 850, "width": 220, "height": 55}
         if kwargs.get('ocr_bounds'):
             self.ocr_bounds = kwargs.get('ocr_bounds')
 
@@ -48,6 +48,11 @@ class AutoWalker(object):
     def run(self):
         while self.running:
             self.run_handler()
+        if not self.running:
+            pydirectinput.keyUp("left")
+            pydirectinput.keyUp("right")
+            pydirectinput.keyUp("up")
+            pydirectinput.keyUp("down")
 
     def run_handler(self):
         while self.running:
@@ -127,8 +132,9 @@ class AutoWalker(object):
             ret, img = cv2.threshold(img, 170, 255, cv2.THRESH_TOZERO)
             img = cv2.threshold(img, 170, 255, cv2.THRESH_TOZERO)[1]
             img = cv2.threshold(img, 170, 255, cv2.THRESH_BINARY_INV)[1]
+            img = cv2.GaussianBlur(img, (7, 7), 0)
 
-            custom_oem_psm_config = r'--psm 3 -c tessedit_char_whitelist=0123456789,-'
+            custom_oem_psm_config = r'--psm 3'
 
             found_text = [i for i in
                           pytesseract.image_to_string(img, lang='eng', config=custom_oem_psm_config).split("\n")
@@ -146,6 +152,8 @@ class AutoWalker(object):
                 # Handle the parsing case of ex: ["1000,343"]
                 # TODO: Improve the pattern to prevent this
                 text = text[0].split(",")
+                if len(text) < 2:
+                    text = text[0].split(".")
                 if len(text) == 2:
                     return int(text[0]), int(text[1])
 
