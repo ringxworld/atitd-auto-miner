@@ -124,6 +124,12 @@ class AutoWalker(object):
 
             self.curr_press_dir = curr_press_dir
 
+    """
+
+
+
+    """
+
     @staticmethod
     def get_coordinates(ocr_bounds, pattern):
         with mss.mss() as sct:
@@ -142,7 +148,7 @@ class AutoWalker(object):
             if len(found_text) < 2:
                 return False
             datetime = found_text[0]
-            coordinates = found_text[1]
+            coordinates = found_text[1].replace("- ", "-").replace(" ", "")
 
             text = extract_match(pattern, coordinates)
 
