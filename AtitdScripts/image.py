@@ -1,3 +1,5 @@
+import logging
+
 import cv2
 import mss
 import numpy as np
@@ -6,7 +8,6 @@ import pytesseract
 import time
 
 from AtitdScripts.utils import almost_equal, extract_match
-
 
 
 def get_circles_from_foreground(img, debug=False, intensity_lower=70, intensity_upper=150):
@@ -26,12 +27,13 @@ def get_circles_from_foreground(img, debug=False, intensity_lower=70, intensity_
     if debug:
         if circles is not None:
             circles = np.uint16(np.around(circles))
-            for i in circles[0,:]:
+            for i in circles[0, :]:
                 cv.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
                 cv.imshow('detected circles', cimg)
 
     return circles
+
 
 def matched_pixel_colors(points, expected_colors, monitor_bounds):
     matched = True
@@ -56,10 +58,13 @@ def matched_pixel_colors(points, expected_colors, monitor_bounds):
     return matched
 
 
-def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntilGone=False):
+def template_match_click(template_path, bounds, rightClick=False,
+                         retry_attempt_limits=35,
+                         sleep_time=0.05,
+                         sleepUntilTrue=False, checkUntilGone=False):
     clicked = False
     with mss.mss() as sct:
-        retry_attempts = 35
+        retry_attempts = retry_attempt_limits
         tmp_img = np.array(sct.grab(bounds))
 
         ok = cv2.imread(template_path, cv2.IMREAD_UNCHANGED)
@@ -83,8 +88,11 @@ def template_match_click(template_path, bounds, sleepUntilTrue=False, checkUntil
             MPx, MPy = mxLoc
             trows, tcols = ok.shape[:2]
             pyautogui.moveTo(bounds['left'] + ((MPx + MPx + tcols) / 2), bounds['top'] + ((MPy + MPy + trows) / 2))
-            time.sleep(0.05)
-            pyautogui.click()
+            time.sleep(sleep_time)
+            if not rightClick:
+                pyautogui.click()
+            else:
+                pyautogui.rightClick()
             clicked = True
             mx = -1 if not checkUntilGone else mx
             if checkUntilGone:
@@ -118,3 +126,22 @@ def maintain_aspect_ratio_resize(image, width=None, height=None, inter=cv2.INTER
 
     # Return the resized image
     return cv2.resize(image, dim, interpolation=inter)
+
+
+def save_ocr_bounding_box(boxes, img):
+    h, w = img.shape
+    _boxes = boxes.split("\n")
+    for idx, val in enumerate(_boxes):
+        bounds = val.split(" ")
+        logging.debug(bounds)
+        if len(bounds) == 6:
+            _tmp = img.copy()
+            logging.debug(f"{int(bounds[1])}, {h - int(bounds[2])}")
+            logging.debug(f"{int(bounds[3])}, {h - int(bounds[4])}")
+            cv2.rectangle(_tmp,
+                          (int(bounds[1]), h - int(bounds[2])),
+                          (int(bounds[3]), h - int(bounds[4])),
+                          (0, 0, 0),
+                          2)
+            if idx < len(_boxes) - 1:
+                cv2.imwrite(f"temp_{idx + 1}.png", _tmp)

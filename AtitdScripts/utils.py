@@ -51,4 +51,9 @@ def total_dist(points, metric="cityblock"):
 
 
 def manhattan(A, B):
-    return np.abs(A - B).sum()
+    res = None
+    try:
+        res = np.abs(A - B).sum()
+    except (TypeError, UnboundLocalError):
+        print("Error on getting dist")
+    return res
