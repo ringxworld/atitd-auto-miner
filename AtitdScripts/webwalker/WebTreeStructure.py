@@ -26,7 +26,10 @@ class WebWalkerTree(object):
         assert "Nodes" in self.node_definitions.keys()
 
         for key, value in self.node_definitions['Nodes'].items():
-            connections = value["connection"]
+            try:
+                connections = value["connection"]
+            except KeyError:
+                print("t")
             if key not in _dict.keys():
                 _dict[key] = {}
             if connections:
@@ -35,22 +38,30 @@ class WebWalkerTree(object):
                     if out[1] not in _dict.keys():
                         _dict[out[1]] = {}
                     logging.debug(f"key: {_key}\n\t Route: {_value['route']}\n\t Reversed: {_value['route'][::-1]}")
+
+                    is_chariot_route = False
+                    if 'chariot' in self.node_definitions['Nodes'][out[1]].keys() and 'chariot' in self.node_definitions['Nodes'][out[0]].keys():
+                        is_chariot_route = True
+
                     if out[1] not in _dict[key]:
-                        _dict[key][out[1]] = {"route": _value['route'],
-                                              "cost": total_dist(_value['route'])}
+                        dist = total_dist(_value['route']) if not is_chariot_route else 0
+                        _dict[key][out[1]] = {"route": _value['route'], "cost": dist}
                     if out[0] not in _dict[out[1]]:
-                        _dict[out[1]][out[0]] = {"route": _value['route'][::-1],
-                                                 "cost": total_dist(_value['route'])}
+                        dist = total_dist(_value['route']) if not is_chariot_route else 0
+                        _dict[out[1]][out[0]] = {"route": _value['route'][::-1], "cost": dist}
         return _dict
 
     def get_best_path_from_coordinates(self, start, end):
+        print(f"Start Coordinate: {start}, End waypoint: {end}")
         start_waypoint = self.get_closest_waypoint_to_coordinate(start)
         end_waypoint = self.get_closest_waypoint_to_coordinate(end, safe_start_node=False)
+        print(f"Start Waypoint: {start_waypoint}, End Waypoint: {end_waypoint}")
 
         distances = self.dijkstra(self.graph, start_waypoint)
         path = self.find_path(distances, start_waypoint, end_waypoint)
         out = self.resolve_coordinates(self.graph, path)
-        return out
+        extended = self.append_closest_connection(distances, out, start_waypoint, start)
+        return extended
 
     def get_closest_waypoint_to_coordinate(self, coordinate, safe_start_node=True):
         min = float('inf')
@@ -105,11 +116,53 @@ class WebWalkerTree(object):
                     return newpath
         return None
 
+    def append_closest_connection(self, distances, path, node, start_coord):
+        if node not in self.graph:
+            return path
+
+        least_dist = float("inf")
+        closest_path = ""
+        closest_point = None
+
+        # Get closest connecting path to node
+        for idx, val in enumerate(distances[node]['nodes']):
+            paths = self.graph[node][val]['route']
+            for _idx, _val in enumerate(paths):
+                dist = manhattan(np.asarray(_val), np.asarray(start_coord))
+                if dist < least_dist:
+                    closest_path = val
+                    closest_point = _val
+                    least_dist = dist
+
+        additional = []
+        save_points = False
+        if not closest_point:
+            return path
+
+        # add points starting at closest to the node connection
+        for idx, val in enumerate(self.graph[node][closest_path]['route'][::-1]):
+            if save_points:
+                additional.append(val)
+            if closest_point == val:
+                additional.append(val)
+                save_points = True
+
+        additional.extend(path)
+
+        return additional
+
     def resolve_coordinates(self, graph, path):
-        coorindates = []
+        coordinates = []
         for idx, val in enumerate(path):
             if idx < len(path) - 1:
-                coorindates.extend(graph[val][path[idx + 1]]['route'])
-        if len(coorindates) == 0:
-            coorindates.append(self.node_definitions['Nodes'][path[0]]["coordinate"])
-        return coorindates
+                curr_is_chariot = self.node_definitions['Nodes'][path[idx]].get('chariot')
+                next_is_chariot = self.node_definitions['Nodes'][path[idx+1]].get('chariot')
+                if curr_is_chariot and next_is_chariot:
+                    coordinates.append(graph[val][path[idx + 1]]['route'][0])
+                    coordinates.append(f"destination_{path[idx+1]}")
+                    coordinates.append(graph[val][path[idx + 1]]['route'][1])
+                else:
+                    coordinates.extend(graph[val][path[idx + 1]]['route'])
+        if len(coordinates) == 0:
+            coordinates.append(self.node_definitions['Nodes'][path[0]]["coordinate"])
+        return coordinates
